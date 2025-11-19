@@ -246,11 +246,20 @@ class Provider(BaseProvider):
         query_params: OptStrDict = None,
     ):
         # TTL is required for all deSEC record sets
+        # It can be omitted in PATCH requests, which keeps the RR's current TTL
         if data:
-            if ttl := self._get_lexicon_option("ttl"):
-                data["ttl"] = ttl
-            if not data["ttl"]:
-                data["ttl"] = "3600"
+            ttl_cur = data.get("ttl", 0)
+            ttl_opt = self._get_lexicon_option("ttl") or 3600
+            if not ttl_cur or ttl_opt != 3600:
+                # Override by user / set default
+                data["ttl"] = ttl_opt
+            elif action == "PATCH" and ttl_cur < 3600:
+                # Preserve current value if under 3600, this is necessary for dynDNS use cases
+                # The API clamps values under 3600 (if set) but keeps the current if unset
+                del data["ttl"]
+            else:
+                # Fallback for allow setting a TTL of 3600
+                data["ttl"] = 3600
 
         response = self._session.request(
             action,

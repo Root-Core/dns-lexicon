@@ -250,16 +250,13 @@ class Provider(BaseProvider):
         if data:
             ttl_cur = int(data.get("ttl", 0))
             ttl_opt = int(self._get_lexicon_option("ttl") or 3600)
-            if not ttl_cur or ttl_opt != 3600:
-                # Override by user / set default
-                data["ttl"] = str(ttl_opt)
-            elif action == "PATCH" and ttl_cur < 3600:
+            if ttl_cur == ttl_opt or (action == "PATCH" and ttl_cur < 3600):
                 # Preserve current value if under 3600, this is necessary for dynDNS use cases
                 # The API clamps values under 3600 (if set) but keeps the current if unset
                 del data["ttl"]
             else:
-                # Fallback for allow setting a TTL of 3600
-                data["ttl"] = "3600"
+                # Override by user / set default
+                data["ttl"] = str(ttl_opt)
 
         response = self._session.request(
             action,
